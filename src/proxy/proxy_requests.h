@@ -104,6 +104,7 @@ enum {
 	LIBCEPHFSD_OP_LL_MKDIR,
 	LIBCEPHFSD_OP_LL_RMDIR,
 	LIBCEPHFSD_OP_LL_RELEASEDIR,
+	LIBCEPHFSD_OP_MOUNT_PERMS,
 
 	LIBCEPHFSD_OP_TOTAL_OPS
 };
@@ -285,6 +286,8 @@ CEPH_TYPE(ceph_ll_rmdir,
 
 CEPH_TYPE(ceph_ll_releasedir, REQ_CMOUNT(uint64_t dir;), ANS());
 
+CEPH_TYPE(ceph_mount_perms, REQ_CMOUNT(), ANS(uint64_t userperm;));
+
 typedef union _proxy_req {
 	proxy_link_req_t header;
 
@@ -334,6 +337,7 @@ typedef union _proxy_req {
 	proxy_ceph_ll_mkdir_req_t ll_mkdir;
 	proxy_ceph_ll_rmdir_req_t ll_rmdir;
 	proxy_ceph_ll_releasedir_req_t ll_releasedir;
+	proxy_ceph_mount_perms_req_t mount_perms;
 } proxy_req_t;
 
 #endif

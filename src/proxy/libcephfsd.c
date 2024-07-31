@@ -1527,6 +1527,26 @@ static int32_t libcephfsd_ll_releasedir(proxy_client_t *client,
 	return CEPH_COMPLETE(client, err, ans);
 }
 
+static int32_t libcephfsd_mount_perms(proxy_client_t *client, proxy_req_t *req,
+				      const void *data, int32_t data_size)
+{
+	CEPH_DATA(ceph_mount_perms, ans, 0);
+	proxy_mount_t *mount;
+	UserPerm *perms;
+	int32_t err;
+
+	err = ptr_check(&client->random, req->mount_perms.cmount,
+			(void **)&mount);
+	if (err >= 0) {
+		perms = ceph_mount_perms(proxy_cmount(mount));
+		TRACE("ceph_mount_perms(%p) -> %p", mount, perms);
+
+		ans.userperm = ptr_checksum(&global_random, perms);
+	}
+
+	return CEPH_COMPLETE(client, err, ans);
+}
+
 static proxy_handler_t libcephfsd_handlers[LIBCEPHFSD_OP_TOTAL_OPS] = {
 	[LIBCEPHFSD_OP_VERSION] = libcephfsd_version,
 	[LIBCEPHFSD_OP_USERPERM_NEW] = libcephfsd_userperm_new,
@@ -1574,6 +1594,7 @@ static proxy_handler_t libcephfsd_handlers[LIBCEPHFSD_OP_TOTAL_OPS] = {
 	[LIBCEPHFSD_OP_LL_MKDIR] = libcephfsd_ll_mkdir,
 	[LIBCEPHFSD_OP_LL_RMDIR] = libcephfsd_ll_rmdir,
 	[LIBCEPHFSD_OP_LL_RELEASEDIR] = libcephfsd_ll_releasedir,
+	[LIBCEPHFSD_OP_MOUNT_PERMS] = libcephfsd_mount_perms,
 };
 
 static void serve_binary(proxy_client_t *client)

@@ -844,3 +844,17 @@ __public const char *ceph_version(int *major, int *minor, int *patch)
 
 	return cached_version;
 }
+
+__public UserPerm *ceph_mount_perms(struct ceph_mount_info *cmount)
+{
+	CEPH_REQ(ceph_mount_perms, req, 0, ans, 0);
+	int32_t err;
+
+	err = CEPH_PROCESS(cmount, LIBCEPHFSD_OP_MOUNT_PERMS, req, ans);
+	if (err < 0) {
+		errno = -err;
+		return NULL;
+	}
+
+	return value_ptr(ans.userperm);
+}
