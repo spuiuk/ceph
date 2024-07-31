@@ -858,3 +858,95 @@ __public UserPerm *ceph_mount_perms(struct ceph_mount_info *cmount)
 
 	return value_ptr(ans.userperm);
 }
+
+__public int ceph_statx(struct ceph_mount_info *cmount, const char *path,
+			struct ceph_statx *stx, unsigned int want,
+			unsigned int flags)
+{
+	UserPerm *perms;
+	Inode *inode;
+	int32_t err;
+
+	perms = ceph_mount_perms(cmount);
+	if (perms == NULL) {
+		return -errno;
+	}
+
+	err = ceph_ll_walk(cmount, path, &inode, stx, want, flags, perms);
+	if (err < 0) {
+		return err;
+	}
+
+	ceph_ll_put(cmount, inode);
+
+	return err;
+}
+
+__public int ceph_readlink(struct ceph_mount_info *cmount, const char *path,
+			   char *buf, int64_t size)
+{
+	struct ceph_statx stx;
+	UserPerm *perms;
+	Inode *inode;
+	int32_t err;
+
+	perms = ceph_mount_perms(cmount);
+	if (perms == NULL) {
+		return -errno;
+	}
+
+	err = ceph_ll_walk(cmount, path, &inode, &stx, CEPH_STATX_INO,
+			   AT_SYMLINK_NOFOLLOW, perms);
+	if (err < 0) {
+		return err;
+	}
+
+	err = ceph_ll_readlink(cmount, inode, buf, size, perms);
+
+	ceph_ll_put(cmount, inode);
+
+	return err;
+}
+
+__public int ceph_symlink(struct ceph_mount_info *cmount, const char *existing,
+			  const char *newname)
+{
+	struct ceph_statx stx;
+	UserPerm *perms;
+	Inode *inode, *parent;
+	char *path;
+	int32_t err;
+
+	perms = ceph_mount_perms(cmount);
+	if (perms == NULL) {
+		return -errno;
+	}
+
+	if (strchr(newname, '/') == NULL) {
+		err = ceph_ll_walk(cmount, ".", &parent, &stx, CEPH_STATX_INO,
+				   0, perms);
+	} else {
+		path = strdup(newname);
+		if (path == NULL) {
+			err = -ENOMEM;
+		} else {
+			*strrchr(path, '/') = 0;
+			err = ceph_ll_walk(cmount, path, &parent, &stx,
+					   CEPH_STATX_INO, 0, perms);
+			free(path);
+		}
+	}
+	if (err < 0) {
+		return err;
+	}
+
+	err = ceph_ll_symlink(cmount, parent, newname, existing, &inode, &stx,
+			      CEPH_STATX_INO, AT_SYMLINK_NOFOLLOW, perms);
+	if (err >= 0) {
+		ceph_ll_put(cmount, inode);
+	}
+
+	ceph_ll_put(cmount, parent);
+
+	return err;
+}
