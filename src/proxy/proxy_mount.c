@@ -232,7 +232,7 @@ static int32_t proxy_path_iterator_init(proxy_path_iterator_t *iter,
 			return -ENOMEM;
 		}
 		iter->realpath_len = 0;
-		if (ch == '/') {
+		if (ch != '/') {
 			memcpy(iter->realpath, mount->cwd_path,
 			       mount->cwd_path_len);
 			iter->realpath_len = mount->cwd_path_len;
