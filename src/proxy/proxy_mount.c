@@ -569,11 +569,24 @@ static int32_t proxy_config_destination_write(int32_t fd, void *data,
 
 static int32_t proxy_config_destination_commit(int32_t fd, const char *name)
 {
+	char path[32];
+
 	if (fsync(fd) < 0) {
 		return proxy_log(LOG_ERR, errno, "fsync() failed");
 	}
 
 	if (linkat(fd, "", AT_FDCWD, name, AT_EMPTY_PATH) < 0) {
+		if (errno == EEXIST) {
+			return 0;
+		}
+
+		/* This may fail if the user doesn't have CAP_DAC_READ_SEARCH.
+		 * In this case we attempt to link it using the /proc
+		 * filesystem. */
+	}
+
+	snprintf(path, sizeof(path), "/proc/self/fd/%d", fd);
+	if (linkat(AT_FDCWD, path, AT_FDCWD, name, AT_SYMLINK_FOLLOW) < 0) {
 		if (errno != EEXIST) {
 			return proxy_log(LOG_ERR, errno, "linkat() failed");
 		}
