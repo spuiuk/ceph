@@ -204,8 +204,12 @@ int32_t proxy_link_write(proxy_link_t *link, int32_t sd, void *buffer,
 
 int32_t proxy_link_send(int32_t sd, struct iovec *iov, int32_t count)
 {
+	struct iovec iov_copy[count];
 	ssize_t len;
 	int32_t total;
+
+	memcpy(iov_copy, iov, sizeof(struct iovec) * count);
+	iov = iov_copy;
 
 	total = 0;
 	while (count > 0) {
@@ -235,8 +239,12 @@ int32_t proxy_link_send(int32_t sd, struct iovec *iov, int32_t count)
 
 int32_t proxy_link_recv(int32_t sd, struct iovec *iov, int32_t count)
 {
-	ssize_t len;
+	struct iovec iov_copy[count];
+        ssize_t len;
 	int32_t total;
+
+	memcpy(iov_copy, iov, sizeof(struct iovec) * count);
+	iov = iov_copy;
 
 	total = 0;
 	while (count > 0) {
