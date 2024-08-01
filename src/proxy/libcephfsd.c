@@ -925,7 +925,7 @@ static int32_t libcephfsd_ll_read(proxy_client_t *client, proxy_req_t *req,
 
 		size = client->buffer_size;
 		if (len > size) {
-			buffer = proxy_malloc(size);
+			buffer = proxy_malloc(len);
 			if (buffer == NULL) {
 				err = -ENOMEM;
 			}
