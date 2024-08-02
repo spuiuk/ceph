@@ -146,8 +146,12 @@ static proxy_linked_str_t *proxy_linked_str_create(const char *str,
 	lstr = proxy_malloc(sizeof(proxy_linked_str_t) + len);
 	if (lstr != NULL) {
 		lstr->next = next;
-		lstr->remaining = lstr->data;
-		memcpy(lstr->data, str, len);
+		if (len > 1) {
+			lstr->remaining = lstr->data;
+			memcpy(lstr->data, str, len);
+		} else {
+			lstr->remaining = NULL;
+		}
 	}
 
 	return lstr;
@@ -188,7 +192,7 @@ static char *proxy_linked_str_scan(proxy_linked_str_t *lstr, char ch)
 	return current;
 }
 
-static int32_t proxy_path_iterator_init(proxy_path_iterator_t *iter,
+static int32_t 	proxy_path_iterator_init(proxy_path_iterator_t *iter,
 					proxy_mount_t *mount, const char *path,
 					UserPerm *perms, bool realpath,
 					bool follow)
@@ -231,11 +235,14 @@ static int32_t proxy_path_iterator_init(proxy_path_iterator_t *iter,
 		if (iter->realpath == NULL) {
 			return -ENOMEM;
 		}
-		iter->realpath_len = 0;
 		if (ch != '/') {
 			memcpy(iter->realpath, mount->cwd_path,
-			       mount->cwd_path_len);
+			       mount->cwd_path_len + 1);
 			iter->realpath_len = mount->cwd_path_len;
+		} else {
+			iter->realpath[0] = '/';
+			iter->realpath[1] = 0;
+			iter->realpath_len = 1;
 		}
 	}
 
@@ -310,7 +317,10 @@ static int32_t proxy_path_iterator_resolve(proxy_path_iterator_t *iter)
 		iter->base = iter->root;
 		iter->base_ino = iter->root_ino;
 		iter->release = false;
-		iter->realpath_len = 0;
+		if (iter->realpath != NULL) {
+			iter->realpath[1] = 0;
+			iter->realpath_len = 1;
+		}
 
 		ptr++;
 	}
@@ -330,12 +340,12 @@ static int32_t proxy_path_iterator_append(proxy_path_iterator_t *iter,
 	uint32_t len, size;
 	int32_t err;
 
-	len = strlen(name);
+	len = strlen(name) + 1;
 	size = iter->realpath_size;
-	if (iter->realpath_len + len + 1 >= size) {
+	if (iter->realpath_len + len >= size) {
 		do {
 			size <<= 1;
-		} while (iter->realpath_len + len + 1 >= size);
+		} while (iter->realpath_len + len >= size);
 		err = proxy_realloc((void **)&iter->realpath, size);
 		if (err < 0) {
 			return err;
@@ -343,9 +353,11 @@ static int32_t proxy_path_iterator_append(proxy_path_iterator_t *iter,
 		iter->realpath_size = size;
 	}
 
-	iter->realpath[iter->realpath_len++] = '/';
+	if (iter->realpath_len > 1) {
+		iter->realpath[iter->realpath_len++] = '/';
+	}
 	memcpy(iter->realpath + iter->realpath_len, name, len);
-	iter->realpath_len += len;
+	iter->realpath_len += len - 1;
 
 	return 0;
 }
